@@ -897,15 +897,15 @@ class TraCIScenario(KernelScenario):
             from_edge = connection.attrib['from']
             from_lane = int(connection.attrib['fromLane'])
 
-            if from_edge[0] != ":":
-                # if the edge is not an internal link, then get the next
-                # edge/lane pair from the "via" element
-                via = connection.attrib['via'].rsplit('_', 1)
-                to_edge = via[0]
-                to_lane = int(via[1])
-            else:
-                to_edge = connection.attrib['to']
-                to_lane = int(connection.attrib['toLane'])
+            # if from_edge[0] != ":":
+            #     # if the edge is not an internal link, then get the next
+            #     # edge/lane pair from the "via" element
+            #     via = connection.attrib['via'].rsplit('_', 1)
+            #     to_edge = via[0]
+            #     to_lane = int(via[1])
+            # else:
+            to_edge = connection.attrib['to']
+            to_lane = int(connection.attrib['toLane'])
 
             if from_edge not in next_conn_data:
                 next_conn_data[from_edge] = dict()

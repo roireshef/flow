@@ -360,9 +360,11 @@ class Env(gym.Env):
             # store new observations in the vehicles and traffic lights class
             self.k.update(reset=False)
 
+            self.additional_post_sim_step_command()
+
             # update the colors of vehicles
-            if self.sim_params.render:
-                self.k.vehicle.update_vehicle_colors()
+            #if self.sim_params.render:
+            #    self.k.vehicle.update_vehicle_colors()
 
             # crash encodes whether the simulator experienced a collision
             crash = self.check_collision()
@@ -385,8 +387,10 @@ class Env(gym.Env):
 
         # test if the environment should terminate due to a collision or the
         # time horizon being met
-        done = (self.time_counter >= self.env_params.warmup_steps +
-                self.env_params.horizon)  # or crash
+        done = crash or (self.time_counter >= self.env_params.warmup_steps + self.env_params.horizon)
+
+        self.additional_post_step_command(crash=crash, timeout=done and not crash,
+                                          next_observation = next_observation)
 
         # compute the info for each agent
         infos = {}
@@ -515,7 +519,9 @@ class Env(gym.Env):
         observation = copy(states)
 
         # perform (optional) warm-up steps before training
-        for _ in range(self.env_params.warmup_steps):
+        assert int(self.env_params.warmup_steps) % int(self.env_params.sims_per_step) == 0,\
+            "warmup_steps has to be a multiple of sims_per_step"
+        for _ in range(int(int(self.env_params.warmup_steps) / int(self.env_params.sims_per_step))):
             observation, _, _, _ = self.step(rl_actions=None)
 
         # render a frame
@@ -525,6 +531,14 @@ class Env(gym.Env):
 
     def additional_command(self):
         """Additional commands that may be performed by the step method."""
+        pass
+
+    def additional_post_step_command(self, crash: bool, timeout: bool, next_observation):
+        """ A placeholder for logic that is performed by the step method, after all sim steps are executed """
+        pass
+
+    def additional_post_sim_step_command(self):
+        """ A placeholder for logic that is performed by the step method, after each sim step is executed """
         pass
 
     def clip_actions(self, rl_actions=None):
