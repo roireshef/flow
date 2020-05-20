@@ -120,6 +120,10 @@ class TraCISimulation(KernelSimulation):
                     sumo_call.append("--seed")
                     sumo_call.append(str(sim_params.seed))
 
+                # avoid teleporting due to collisions
+                sumo_call.append("--collision.action")
+                sumo_call.append("none")
+
                 if not sim_params.print_warnings:
                     sumo_call.append("--no-warnings")
                     sumo_call.append("true")

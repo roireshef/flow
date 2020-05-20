@@ -1,6 +1,6 @@
 """Base environment class. This is the parent of all other environments."""
 
-from copy import deepcopy
+from copy import copy, deepcopy
 import os
 import atexit
 import time
@@ -275,6 +275,9 @@ class Env(gym.Env):
 
             self.initial_state[veh_id] = (type_id, edge, lane, pos, speed)
 
+    def check_collision(self):
+        return self.k.simulation.check_collision()
+
     def step(self, rl_actions):
         """Advance the environment by one step.
 
@@ -305,7 +308,10 @@ class Env(gym.Env):
         info : dict
             contains other diagnostic information from the previous action
         """
-        for _ in range(self.env_params.sims_per_step):
+        # assuming rl_actions is a list of accelerations. will make the "step" method run
+        # a number of iterations as the number of points on the sent trajectory, unless
+        # self.env_params.sims_per_step limits it
+        for i in range(min(self.env_params.sims_per_step, len(rl_actions))):
             self.time_counter += 1
             self.step_counter += 1
 
@@ -344,7 +350,7 @@ class Env(gym.Env):
 
             self.k.vehicle.choose_routes(routing_ids, routing_actions)
 
-            self.apply_rl_actions(rl_actions)
+            self.apply_rl_actions(rl_actions[i])
 
             self.additional_command()
 
@@ -359,7 +365,7 @@ class Env(gym.Env):
                 self.k.vehicle.update_vehicle_colors()
 
             # crash encodes whether the simulator experienced a collision
-            crash = self.k.simulation.check_collision()
+            crash = self.check_collision()
 
             # stop collecting new simulation steps if there is a collision
             if crash:
@@ -375,7 +381,7 @@ class Env(gym.Env):
         self.state = np.asarray(states).T
 
         # collect observation new state associated with action
-        next_observation = np.copy(states)
+        next_observation = copy(states)
 
         # test if the environment should terminate due to a collision or the
         # time horizon being met
@@ -412,21 +418,6 @@ class Env(gym.Env):
         """
         # reset the time counter
         self.time_counter = 0
-
-        # warn about not using restart_instance when using inflows
-        if len(self.net_params.inflows.get()) > 0 and \
-                not self.sim_params.restart_instance:
-            print(
-                "**********************************************************\n"
-                "**********************************************************\n"
-                "**********************************************************\n"
-                "WARNING: Inflows will cause computational performance to\n"
-                "significantly decrease after large number of rollouts. In \n"
-                "order to avoid this, set SumoParams(restart_instance=True).\n"
-                "**********************************************************\n"
-                "**********************************************************\n"
-                "**********************************************************"
-            )
 
         if self.sim_params.restart_instance or \
                 (self.step_counter > 2e6 and self.simulator != 'aimsun'):
@@ -480,7 +471,7 @@ class Env(gym.Env):
                 # if a vehicle was not removed in the first attempt, remove it
                 # now and then reintroduce it
                 self.k.vehicle.remove(veh_id)
-                if self.simulator == 'traci':
+                if self.simulator == 'traci' and veh_id in self.k.kernel_api.vehicle.getIDList():
                     self.k.kernel_api.vehicle.remove(veh_id)  # FIXME: hack
                 self.k.vehicle.add(
                     veh_id=veh_id,
@@ -521,7 +512,7 @@ class Env(gym.Env):
         self.state = np.asarray(states).T
 
         # observation associated with the reset (no warm-up steps)
-        observation = np.copy(states)
+        observation = copy(states)
 
         # perform (optional) warm-up steps before training
         for _ in range(self.env_params.warmup_steps):

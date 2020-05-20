@@ -135,7 +135,7 @@ class TraCIVehicle(KernelVehicle):
             self.remove(veh_id)
             # remove exiting vehicles from the vehicle subscription if they
             # haven't been removed already
-            if vehicle_obs[veh_id] is None:
+            if veh_id in vehicle_obs and vehicle_obs[veh_id] is None:
                 vehicle_obs.pop(veh_id, None)
 
         # add entering vehicles into the vehicles class
