@@ -1134,12 +1134,12 @@ class TraCIVehicle(KernelVehicle):
         metric_name = 'accel'
         if noise:
             metric_name += '_with_noise'
-        else:
-            metric_name += '_no_noise'
+        # else:
+        #     metric_name += '_no_noise'
         if failsafe:
             metric_name += '_with_falsafe'
-        else:
-            metric_name += '_no_failsafe'
+        # else:
+        #     metric_name += '_no_failsafe'
 
         if metric_name not in self.__vehicles[veh_id]:
             self.__vehicles[veh_id][metric_name] = None

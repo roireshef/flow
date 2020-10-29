@@ -189,7 +189,9 @@ class TraCISimulation(KernelSimulation):
                     sumo_binary, "-c", network.cfg,
                     "--remote-port", str(sim_params.port),
                     "--num-clients", str(sim_params.num_clients),
-                    "--step-length", str(sim_params.sim_step)
+                    "--step-length", str(sim_params.sim_step),
+                    "--start",
+                    "--quit-on-end"
                 ]
 
                 # use a ballistic integration step (if request)
@@ -213,6 +215,10 @@ class TraCISimulation(KernelSimulation):
                 if sim_params.seed is not None:
                     sumo_call.append("--seed")
                     sumo_call.append(str(sim_params.seed))
+
+                # avoid teleporting due to collisions
+                sumo_call.append("--collision.action")
+                sumo_call.append("none")
 
                 if not sim_params.print_warnings:
                     sumo_call.append("--no-warnings")

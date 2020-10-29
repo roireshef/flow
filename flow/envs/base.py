@@ -1,7 +1,7 @@
 """Base environment class. This is the parent of all other environments."""
 
 from abc import ABCMeta, abstractmethod
-from copy import deepcopy
+from copy import deepcopy, copy
 import os
 import atexit
 import time
@@ -132,8 +132,6 @@ class Env(gym.Env, metaclass=ABCMeta):
         self.initial_config = self.network.initial_config
         self.sim_params = deepcopy(sim_params)
         # check whether we should be rendering
-        self.should_render = self.sim_params.render
-        self.sim_params.render = False
         time_stamp = ''.join(str(time.time()).split('.'))
         if os.environ.get("TEST_FLAG", 0):
             # 1.0 works with stress_test_start 10k times
@@ -292,6 +290,9 @@ class Env(gym.Env, metaclass=ABCMeta):
 
             self.initial_state[veh_id] = (type_id, edge, lane, pos, speed)
 
+    def check_collision(self):
+        return self.k.simulation.check_collision()
+
     def step(self, rl_actions):
         """Advance the environment by one step.
 
@@ -322,7 +323,10 @@ class Env(gym.Env, metaclass=ABCMeta):
         info : dict
             contains other diagnostic information from the previous action
         """
-        for _ in range(self.env_params.sims_per_step):
+        # assuming rl_actions is a list of accelerations. will make the "step" method run
+        # a number of iterations as the number of points on the sent trajectory, unless
+        # self.env_params.sims_per_step limits it
+        for i in range(min(self.env_params.sims_per_step, len(rl_actions))):
             self.time_counter += 1
             self.step_counter += 1
 
@@ -361,7 +365,7 @@ class Env(gym.Env, metaclass=ABCMeta):
 
             self.k.vehicle.choose_routes(routing_ids, routing_actions)
 
-            self.apply_rl_actions(rl_actions)
+            self.apply_rl_actions(rl_actions[i])
 
             self.additional_command()
 
@@ -371,12 +375,10 @@ class Env(gym.Env, metaclass=ABCMeta):
             # store new observations in the vehicles and traffic lights class
             self.k.update(reset=False)
 
-            # update the colors of vehicles
-            if self.sim_params.render:
-                self.k.vehicle.update_vehicle_colors()
+            self.additional_post_sim_step_command()
 
             # crash encodes whether the simulator experienced a collision
-            crash = self.k.simulation.check_collision()
+            crash = self.check_collision()
 
             # stop collecting new simulation steps if there is a collision
             if crash:
@@ -392,13 +394,15 @@ class Env(gym.Env, metaclass=ABCMeta):
         self.state = np.asarray(states).T
 
         # collect observation new state associated with action
-        next_observation = np.copy(states)
+        next_observation = copy(states)
 
         # test if the environment should terminate due to a collision or the
         # time horizon being met
-        done = (self.time_counter >= self.env_params.sims_per_step *
-                (self.env_params.warmup_steps + self.env_params.horizon)
-                or crash)
+        done = crash or (self.time_counter >= self.env_params.sims_per_step *
+                         (self.env_params.warmup_steps + self.env_params.horizon))
+
+        self.additional_post_step_command(crash=crash, timeout=done and not crash,
+                                          next_observation=next_observation)
 
         # compute the info for each agent
         infos = {}
@@ -430,28 +434,6 @@ class Env(gym.Env, metaclass=ABCMeta):
         """
         # reset the time counter
         self.time_counter = 0
-
-        # Now that we've passed the possibly fake init steps some rl libraries
-        # do, we can feel free to actually render things
-        if self.should_render:
-            self.sim_params.render = True
-            # got to restart the simulation to make it actually display anything
-            self.restart_simulation(self.sim_params)
-
-        # warn about not using restart_instance when using inflows
-        if len(self.net_params.inflows.get()) > 0 and \
-                not self.sim_params.restart_instance:
-            print(
-                "**********************************************************\n"
-                "**********************************************************\n"
-                "**********************************************************\n"
-                "WARNING: Inflows will cause computational performance to\n"
-                "significantly decrease after large number of rollouts. In \n"
-                "order to avoid this, set SumoParams(restart_instance=True).\n"
-                "**********************************************************\n"
-                "**********************************************************\n"
-                "**********************************************************"
-            )
 
         if self.sim_params.restart_instance or \
                 (self.step_counter > 2e6 and self.simulator != 'aimsun'):
@@ -492,6 +474,7 @@ class Env(gym.Env, metaclass=ABCMeta):
         self.k.vehicle.reset()
 
         # reintroduce the initial vehicles to the network
+        veh_ids = self.k.kernel_api.vehicle.getIDList()
         for veh_id in self.initial_ids:
             type_id, edge, lane_index, pos, speed = \
                 self.initial_state[veh_id]
@@ -508,7 +491,7 @@ class Env(gym.Env, metaclass=ABCMeta):
                 # if a vehicle was not removed in the first attempt, remove it
                 # now and then reintroduce it
                 self.k.vehicle.remove(veh_id)
-                if self.simulator == 'traci':
+                if self.simulator == 'traci' and veh_id in veh_ids:
                     self.k.kernel_api.vehicle.remove(veh_id)  # FIXME: hack
                 self.k.vehicle.add(
                     veh_id=veh_id,
@@ -549,7 +532,7 @@ class Env(gym.Env, metaclass=ABCMeta):
         self.state = np.asarray(states).T
 
         # observation associated with the reset (no warm-up steps)
-        observation = np.copy(states)
+        observation = copy(states)
 
         # perform (optional) warm-up steps before training
         for _ in range(self.env_params.warmup_steps):
@@ -562,6 +545,14 @@ class Env(gym.Env, metaclass=ABCMeta):
 
     def additional_command(self):
         """Additional commands that may be performed by the step method."""
+        pass
+
+    def additional_post_step_command(self, crash: bool, timeout: bool, next_observation):
+        """ A placeholder for logic that is performed by the step method, after all sim steps are executed """
+        pass
+
+    def additional_post_sim_step_command(self):
+        """ A placeholder for logic that is performed by the step method, after each sim step is executed """
         pass
 
     def clip_actions(self, rl_actions=None):
@@ -612,8 +603,8 @@ class Env(gym.Env, metaclass=ABCMeta):
         if rl_actions is None:
             return
 
-        rl_clipped = self.clip_actions(rl_actions)
-        self._apply_rl_actions(rl_clipped)
+        # rl_clipped = self.clip_actions(rl_actions)
+        self._apply_rl_actions(rl_actions)
 
     @abstractmethod
     def _apply_rl_actions(self, rl_actions):
