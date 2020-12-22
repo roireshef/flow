@@ -445,6 +445,7 @@ class Env(gym.Env, metaclass=ABCMeta):
             self.k.vehicle.master_kernel = self.k
             # restart the sumo instance
             self.restart_simulation(self.sim_params)
+            self.post_restart_sim()
 
         # perform shuffling (if requested)
         elif self.initial_config.shuffle:
@@ -553,6 +554,11 @@ class Env(gym.Env, metaclass=ABCMeta):
 
     def additional_post_sim_step_command(self):
         """ A placeholder for logic that is performed by the step method, after each sim step is executed """
+        pass
+
+    def post_restart_sim(self):
+        """ A placeholder for logic that is performed after restart_simulation has been called and self.k
+         is updated, but before reset computes the state """
         pass
 
     def clip_actions(self, rl_actions=None):
