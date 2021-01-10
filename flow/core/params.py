@@ -609,7 +609,8 @@ class SumoParams(SimParams):
                  teleport_time=-1,
                  num_clients=1,
                  color_by_speed=False,
-                 use_ballistic=False):
+                 use_ballistic=False,
+                 steps_to_force_restart=2e6):
         """Instantiate SumoParams."""
         super(SumoParams, self).__init__(
             sim_step, render, restart_instance, emission_path, save_render,
@@ -624,6 +625,7 @@ class SumoParams(SimParams):
         self.num_clients = num_clients
         self.color_by_speed = color_by_speed
         self.use_ballistic = use_ballistic
+        self.steps_to_force_restart = steps_to_force_restart
 
 
 class EnvParams:

@@ -436,7 +436,7 @@ class Env(gym.Env, metaclass=ABCMeta):
         self.time_counter = 0
 
         if self.sim_params.restart_instance or \
-                (self.step_counter > 2e6 and self.simulator != 'aimsun'):
+                (self.simulator != 'aimsun' and self.step_counter > self.sim_params.steps_to_force_restart):
             self.step_counter = 0
             # issue a random seed to induce randomness into the next rollout
             self.sim_params.seed = random.randint(0, 1e5)
