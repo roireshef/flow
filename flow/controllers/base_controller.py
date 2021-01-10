@@ -130,8 +130,9 @@ class BaseController(metaclass=ABCMeta):
 
         # this allows the acceleration behavior of vehicles in a junction be
         # described by sumo instead of an explicit model
-        if env.k.vehicle.get_edge(self.veh_id)[0] == ":":
-            return None
+        # THIS WAS INTENTIONALLY COMMENTED OUT BY ROI ON 10/01/21 SINCE IT CREATES ACC/DEC IN INTERSECTIONS
+        # if env.k.vehicle.get_edge(self.veh_id)[0] == ":":
+        #    return None
 
         accel = self.get_accel(env)
 
