@@ -1,6 +1,6 @@
 """Objects that define the various meta-parameters of an experiment."""
 
-import logging
+from flow.utils.logging import logger as logging
 import collections
 
 from flow.utils.flow_warnings import deprecated_attribute

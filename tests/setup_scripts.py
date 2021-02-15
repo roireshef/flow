@@ -4,7 +4,7 @@ This allows us to reduce the number of times these features are specified when
 creating new tests, as all tests follow approximately the same format.
 """
 
-import logging
+from flow.utils.logging import logger as logging
 
 from numpy import pi, sin, cos, linspace
 

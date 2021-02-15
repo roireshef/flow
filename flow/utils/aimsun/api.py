@@ -1,6 +1,6 @@
 """Contains the Flow/Aimsun API manager."""
 import socket
-import logging
+from flow.utils.logging import logger as logging
 import struct
 
 import flow.utils.aimsun.constants as ac

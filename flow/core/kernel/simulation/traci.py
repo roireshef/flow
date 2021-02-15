@@ -8,7 +8,7 @@ import traci
 import traceback
 import os
 import time
-import logging
+from flow.utils.logging import logger as logging
 import subprocess
 import signal
 import csv

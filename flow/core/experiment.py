@@ -1,7 +1,7 @@
 """Contains an experiment class for running simulations."""
 from flow.utils.registry import make_create_env
 from datetime import datetime
-import logging
+from flow.utils.logging import logger as logging
 import time
 import numpy as np
 

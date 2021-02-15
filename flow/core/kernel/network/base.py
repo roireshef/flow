@@ -1,6 +1,6 @@
 """Script containing the base network kernel class."""
 
-import logging
+from flow.utils.logging import logger as logging
 import random
 import numpy as np
 from copy import deepcopy
